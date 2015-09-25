@@ -42,7 +42,7 @@ struct : public Widget {
     int total = std::atoi(util::ReadFile(kTotal).c_str());
     int current = std::atoi(util::ReadFile(kCurrent).c_str());
     const auto& status = util::ReadFile(kStatus);
-    auto source = status == "Charging" ? kChargeLevel : kDrainLevel;
+    auto source = status == "Charging\n" ? kChargeLevel : kDrainLevel;
     return source[kNumStates * current / total];
   }
 
