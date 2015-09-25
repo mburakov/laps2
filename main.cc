@@ -7,8 +7,6 @@
 
 namespace {
 
-int FIXED_SIZE = -1;
-
 void PrintException(const std::exception& ex) {
   int level = 0;
   util::UnwindNested(ex, [&level](const auto& ex) {
@@ -48,15 +46,12 @@ class WidgetView {
   WidgetView(WidgetView&&) = default;
 
   WidgetView(xcb_connection_t* conn, int screen_number) :
-      width_(FIXED_SIZE), height_(FIXED_SIZE),
+      width_(-1), height_(-1),
       state_(nullptr),
       window_(CreateWindow(conn, width_, height_)),
       context_(CreateContext(conn)) {
-    if (FIXED_SIZE > 0) xcb_map_window(conn, window_);
-    else {
-      auto tray = xcb::FindTray(conn, screen_number);
-      xcb::Embed(conn, tray, window_);
-    }
+    auto tray = xcb::FindTray(conn, screen_number);
+    xcb::Embed(conn, tray, window_);
   }
 
   void Update(xcb_connection_t* conn) {
@@ -132,7 +127,6 @@ void HandleWidgetEvent(xcb_connection_t* conn, int fd, WidgetsBinding& widgets) 
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc > 2) FIXED_SIZE = std::atoi(argv[2]);
   try {
     int screen_number;
     xcb::Connection conn(xcb_connect(nullptr, &screen_number), &xcb_disconnect);
