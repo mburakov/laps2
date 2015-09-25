@@ -46,8 +46,8 @@ struct : public Widget {
     return source[kNumStates * current / total];
   }
 
-  int GetPollFd() {
-    return sock_;
+  std::list<int> GetPollFd() {
+    return {sock_};
   }
 
   void Activate() {
