@@ -61,6 +61,8 @@ class WidgetView {
 
   void Update(xcb_connection_t* conn) {
     if (width_ < 0 || height_ < 0 || !state_) return;
+    xcb_clear_area(conn, false, window_, 0, 0, width_, height_);
+    xcb_flush(conn);
     for (auto ptr = state_; ptr[0] || ptr[1]; ptr += 2) {
       std::vector<xcb_point_t> poly;
       for (; ptr[0] || ptr[1]; ptr += 2)
