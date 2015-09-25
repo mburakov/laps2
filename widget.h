@@ -10,7 +10,7 @@ class WidgetList final : public std::list<Widget*>, public util::Singleton<Widge
 struct Widget {
   virtual void Init(int argc, char** argv) = 0;
   virtual const uint8_t* GetState() = 0;
-  virtual int GetPollFd() = 0;
+  virtual std::list<int> GetPollFd() = 0;
   virtual void Activate() = 0;
   virtual void Handle() = 0;
 
