@@ -1,8 +1,16 @@
 #include "resources.h"
 #include "widget.h"
-#include <fstream>
-#include <linux/netlink.h>
-#include <sys/socket.h>
+#include <cstring>
+#include <memory>
+#include <libudev.h>
+
+namespace libudev {
+
+using Context = std::unique_ptr<udev, decltype(&udev_unref)>;
+using Monitor = std::unique_ptr<udev_monitor, decltype(&udev_monitor_unref)>;
+using Device = std::unique_ptr<udev_device, decltype(&udev_device_unref)>;
+
+}  // namespace udev
 
 namespace {
 
@@ -21,41 +29,54 @@ constexpr auto kNumStates = sizeof(kChargeLevel) / sizeof(*kChargeLevel);
 static_assert(kNumStates == sizeof(kDrainLevel) / sizeof(*kDrainLevel),
               "Mismatching number of battery charge levels");
 
+const char kDeviceRoot[] = "/sys/class/power_supply";
+
 struct : public Widget {
-  // TODO(Micha): Replace with RaiiFd
-  int sock_;
+  const char* device_name_{"BAT1"};
+
+  libudev::Context udev_{nullptr, udev_unref};
+  libudev::Monitor monitor_{nullptr, udev_monitor_unref};
+  int fd_;
+
+  bool charging_;
+  int current_;
+  int total_;
 
   void Init(int argc, char** argv) {
     // TODO(Micha): Handle arguments
-    sockaddr_nl sa = {AF_NETLINK, 0, 0, ~0u};
-    sock_ = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_KOBJECT_UEVENT);
-    if (sock_ < 0) throw std::runtime_error("Failed to create udev socket");
-    if (bind(sock_, (struct sockaddr*)&sa, sizeof(struct sockaddr_nl)))
-      throw std::runtime_error("Failed to bind udev socket");
+    const auto& base_path = std::string(kDeviceRoot) + "/" + device_name_ + "/";
+    charging_ = util::ReadFile(base_path + "status") == "Charging\n";
+    current_ = std::atoi(util::ReadFile(base_path + "charge_now").c_str());
+    total_ = std::atoi(util::ReadFile(base_path + "charge_full").c_str());
+    udev_.reset(udev_new());
+
+    if (!udev_) throw std::runtime_error("Failed to create udev context");
+    monitor_.reset(udev_monitor_new_from_netlink(udev_.get(), "udev"));
+    if (!monitor_) throw std::runtime_error("Failed to create udev monitor");
+    if (udev_monitor_filter_add_match_subsystem_devtype(monitor_.get(), "power_supply", nullptr) < 0)
+      throw std::runtime_error("Failed to add udev devtype filter");
+    fd_ = udev_monitor_get_fd(monitor_.get());
+    udev_monitor_enable_receiving(monitor_.get());
   }
 
   const uint8_t* GetState() {
-    static const char kTotal[] = "/sys/class/power_supply/BAT1/charge_full";
-    static const char kCurrent[] = "/sys/class/power_supply/BAT1/charge_now";
-    static const char kStatus[] = "/sys/class/power_supply/BAT1/status";
-
-    int total = std::atoi(util::ReadFile(kTotal).c_str());
-    int current = std::atoi(util::ReadFile(kCurrent).c_str());
-    const auto& status = util::ReadFile(kStatus);
-    auto source = status == "Charging\n" ? kChargeLevel : kDrainLevel;
-    return source[kNumStates * current / total];
+    auto source = charging_ ? kChargeLevel : kDrainLevel;
+    return source[kNumStates * current_ / total_];
   }
 
   std::list<int> GetPollFd() {
-    return {sock_};
+    return {fd_};
   }
 
   void Activate() {
   }
 
   void Handle() {
-    // TODO(Micha): Add normal receiver here
-    for (char byte, res = 1; res > 0; res = recv(sock_, &byte, 1, MSG_DONTWAIT));
+    libudev::Device device(udev_monitor_receive_device(monitor_.get()), udev_device_unref);
+    if (std::strcmp(udev_device_get_sysname(device.get()), device_name_)) return;
+    charging_ = !std::strcmp(udev_device_get_property_value(device.get(), "POWER_SUPPLY_STATUS"), "Charging");
+    current_ = std::atoi(udev_device_get_property_value(device.get(), "POWER_SUPPLY_CHARGE_NOW"));
+    total_ = std::atoi(udev_device_get_property_value(device.get(), "POWER_SUPPLY_CHARGE_FULL"));
   }
 } __impl__;
 
