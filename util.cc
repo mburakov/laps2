@@ -23,6 +23,7 @@ void ThrowSystemError(const std::string& what) {
 
 std::string ReadFile(const std::string& path) {
   std::ifstream source(path);
+  if (!source.is_open()) ThrowSystemError("Can not read file");
   return std::string(std::istreambuf_iterator<char>(source), {});
 }
 
