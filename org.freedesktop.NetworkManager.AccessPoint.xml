@@ -1,0 +1,19 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.freedesktop.NetworkManager.AccessPoint">
+    <signal name="PropertiesChanged">
+      <arg type="a{sv}"/>
+    </signal>
+    <property name="LastSeen" type="i" access="read"/>
+    <property name="Strength" type="y" access="read"/>
+    <property name="MaxBitrate" type="u" access="read"/>
+    <property name="Mode" type="u" access="read"/>
+    <property name="HwAddress" type="s" access="read"/>
+    <property name="Frequency" type="u" access="read"/>
+    <property name="Ssid" type="ay" access="read"/>
+    <property name="RsnFlags" type="u" access="read"/>
+    <property name="WpaFlags" type="u" access="read"/>
+    <property name="Flags" type="u" access="read"/>
+  </interface>
+</node>
