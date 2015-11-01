@@ -1,4 +1,5 @@
 #include "nm_glue.h"
+#include "resources.h"
 #include "widget.h"
 #include <memory>
 
@@ -25,12 +26,7 @@ struct : public Widget {
 
   const uint8_t* GetState() {
     // TODO(Micha): Check status, select appropriate icon, watch for reconnections
-    static const uint8_t kDummyState[] = {
-      0x10, 0x10, 0x80, 0x40, 0xf0, 0x10, 0xc0, 0x80, 0xf0, 0xf0, 0x80, 0xc0, 0x10, 0xf0, 0x40, 0x80,
-      0x00, 0x00, 0x00, 0x00
-    };
-
-    return kDummyState;
+    return ethernet;
   }
 
   std::list<int> GetPollFd() {
