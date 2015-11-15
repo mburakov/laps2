@@ -3,6 +3,8 @@
 
 #include "org.freedesktop.NetworkManager.AccessPoint-proxy.h"
 #include "org.freedesktop.NetworkManager.Connection.Active-proxy.h"
+#include "org.freedesktop.NetworkManager-proxy.h"
+#include <functional>
 
 namespace nm {
 
@@ -17,17 +19,25 @@ enum ConnectionState {
 const char kEthType[] = "802-3-ethernet";
 const char kWifiType[] = "802-11-wireless";
 
+using Props = std::map<std::string, ::DBus::Variant>;
+using PropsCb = std::function<void(const Props&)>;
+
 }  // namespace nm
 
 namespace org {
 namespace freedesktop {
 namespace NetworkManager {
 
-struct AccessPoint : public AccessPoint_proxy, public DBus::ObjectProxy {
-  AccessPoint(DBus::Connection& conn, const std::string& path, const std::string& name) :
-    ObjectProxy(conn, path, name.c_str()) {}
+class AccessPointImpl : public AccessPoint_proxy, public DBus::ObjectProxy {
+ private:
+  const nm::PropsCb& props_cb_;
 
-  void PropertiesChanged(const std::map<std::string, ::DBus::Variant>& props) override {
+ public:
+  AccessPointImpl(DBus::Connection& conn, const std::string& path, const std::string& name, const nm::PropsCb& props_cb) :
+    ObjectProxy(conn, path, name.c_str()), props_cb_(props_cb) {}
+
+  void PropertiesChanged(const nm::Props& props) override {
+    props_cb_(props);
   }
 };
 
@@ -40,11 +50,16 @@ namespace freedesktop {
 namespace NetworkManager {
 namespace Connection {
 
-struct Active : public Active_proxy, public DBus::ObjectProxy {
-  Active(DBus::Connection& conn, const std::string& path, const std::string& name) :
-    ObjectProxy(conn, path, name.c_str()) {}
+class ActiveImpl : public Active_proxy, public DBus::ObjectProxy {
+ private:
+  const nm::PropsCb& props_cb_;
 
-  void PropertiesChanged(const std::map<std::string, ::DBus::Variant>& props) override {
+ public:
+  ActiveImpl(DBus::Connection& conn, const std::string& path, const std::string& name, const nm::PropsCb& props_cb) :
+    ObjectProxy(conn, path, name.c_str()), props_cb_(props_cb) {}
+
+  void PropertiesChanged(const nm::Props& props) override {
+    props_cb_(props);
   }
 };
 
@@ -53,5 +68,28 @@ struct Active : public Active_proxy, public DBus::ObjectProxy {
 }  // namespace freedesktop
 }  // namespace org
 
-#endif  // LAPS2_NM_GLUE_H_
+namespace org {
+namespace freedesktop {
 
+class NetworkManagerImpl : public NetworkManager_proxy, public DBus::ObjectProxy {
+ private:
+  const nm::PropsCb& props_cb_;
+
+ public:
+  NetworkManagerImpl(DBus::Connection& conn, const std::string& path, const std::string& name, const nm::PropsCb& props_cb) :
+    ObjectProxy(conn, path, name.c_str()), props_cb_(props_cb) {}
+
+  void DeviceRemoved(const ::DBus::Path &argin0) override {}
+  void DeviceAdded(const ::DBus::Path &argin0) override {}
+  void StateChanged(const uint32_t &argin0) override {}
+  void CheckPermissions() override {}
+
+  void PropertiesChanged(const nm::Props& props) override {
+    props_cb_(props);
+  }
+};
+
+}  // namespace freedesktop
+}  // namespace org
+
+#endif  // LAPS2_NM_GLUE_H_

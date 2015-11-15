@@ -1,42 +1,58 @@
 #include "nm_glue.h"
 #include "resources.h"
 #include "widget.h"
+#include <iostream>
 #include <memory>
 
 namespace {
 
-const char kActiveServiceName[] = "org.freedesktop.NetworkManager.Connection.Active";
-const char kActiveObjectPath[] = "/org/freedesktop/NetworkManager/ActiveConnection/0";
+const char kServiceName[] = "org.freedesktop.NetworkManager";
+const char kObjectPath[] = "/org/freedesktop/NetworkManager";
 
-struct : public Widget {
+struct NmWidget : public Widget, public DBus::BusDispatcher {
   // TODO(Micha): Replace with RaiiFd
-  int fd_ = -1;
+  std::list<int> fd_;
 
-  DBus::BusDispatcher dispatcher_;
   std::unique_ptr<DBus::Connection> connection_;
-  std::unique_ptr<org::freedesktop::NetworkManager::Connection::Active> active_;
-  std::unique_ptr<org::freedesktop::NetworkManager::AccessPoint> access_point_;
+  std::unique_ptr<org::freedesktop::NetworkManager::AccessPointImpl> access_point_;
+  std::unique_ptr<org::freedesktop::NetworkManager::Connection::ActiveImpl> active_;
+  std::unique_ptr<org::freedesktop::NetworkManagerImpl> network_manager_;
 
-  void Init(int argc, char** argv) {
-    // TODO(Micha): Parse commandline arguments
-    DBus::default_dispatcher = &dispatcher_;
-    connection_ = std::make_unique<decltype(connection_)::element_type>(DBus::Connection::SystemBus());
-    active_ = std::make_unique<decltype(active_)::element_type>(*connection_, kActiveObjectPath, kActiveServiceName);
+  void OnActiveProp(const nm::Props& props) {
+    std::cout << "Prop changed" << std::endl;
   }
 
-  const uint8_t* GetState() {
+  void Init(int argc, char** argv) override {
+    // TODO(Micha): Parse commandline arguments
+    DBus::default_dispatcher = this;
+    connection_ = std::make_unique<decltype(connection_)::element_type>(DBus::Connection::SystemBus());
+    network_manager_ = std::make_unique<decltype(network_manager_)::element_type>(*connection_,
+        kObjectPath, kServiceName, std::bind(&NmWidget::OnActiveProp, this, std::placeholders::_1));
+    std::cout << network_manager_->PrimaryConnection() << std::endl;
+  }
+
+  const uint8_t* GetState() override {
     // TODO(Micha): Check status, select appropriate icon, watch for reconnections
     return ethernet;
   }
 
-  std::list<int> GetPollFd() {
-    return {fd_};
+  std::list<int> GetPollFd() override {
+    return fd_;
   }
 
-  void Activate() {
+  void Activate() override {
   }
 
-  void Handle() {
+  void Handle() override {
+    dispatch_pending();
+    dispatch();
+  }
+
+  DBus::Watch* add_watch(DBus::Watch::Internal* op) override {
+    // TODO(Micha): Cleanup watches
+    auto result = DBus::BusDispatcher::add_watch(op);
+    fd_.push_back(result->descriptor());
+    return result;
   }
 } __impl__;
 
