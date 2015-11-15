@@ -24,7 +24,7 @@ struct : public Widget {
   snd_mixer_t* mixer_;
   snd_mixer_elem_t* master_;
 
-  void Init(int argc, char** argv) {
+  void Init(int argc, char** argv) override {
     // TODO(Micha): Handle arguments
     static const char kCard[] = "default";
     static const char kChan[] = "Master";
@@ -46,7 +46,7 @@ struct : public Widget {
     for (const auto& it : pollfds) pollfd_.push_back(it.fd);
   }
 
-  const uint8_t* GetState() {
+  const uint8_t* GetState() override {
     long min, max, cur;
     snd_mixer_selem_get_playback_volume_range(master_, &min, &max);
     snd_mixer_selem_get_playback_volume(master_, static_cast<snd_mixer_selem_channel_id_t>(0), &cur);
@@ -54,14 +54,14 @@ struct : public Widget {
     return kVolumeLevel[vol_images * cur / (max - min + 1)];
   }
 
-  std::list<int> GetPollFd() {
+  std::list<int> GetPollFd() override {
     return pollfd_;
   }
 
-  void Activate() {
+  void Activate() override {
   }
 
-  void Handle() {
+  void Handle() override {
     snd_mixer_handle_events(mixer_);
   }
 } __impl__;

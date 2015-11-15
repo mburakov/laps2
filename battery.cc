@@ -42,7 +42,7 @@ struct : public Widget {
   int current_;
   int total_;
 
-  void Init(int argc, char** argv) {
+  void Init(int argc, char** argv) override {
     // TODO(Micha): Handle arguments
     const auto& base_path = std::string(kDeviceRoot) + "/" + device_name_ + "/";
     charging_ = util::ReadFile(base_path + "status") == "Charging\n";
@@ -59,19 +59,19 @@ struct : public Widget {
     udev_monitor_enable_receiving(monitor_.get());
   }
 
-  const uint8_t* GetState() {
+  const uint8_t* GetState() override {
     auto source = charging_ ? kChargeLevel : kDrainLevel;
     return source[kNumStates * current_ / total_];
   }
 
-  std::list<int> GetPollFd() {
+  std::list<int> GetPollFd() override {
     return {fd_};
   }
 
-  void Activate() {
+  void Activate() override {
   }
 
-  void Handle() {
+  void Handle() override {
     libudev::Device device(udev_monitor_receive_device(monitor_.get()), udev_device_unref);
     if (std::strcmp(udev_device_get_sysname(device.get()), device_name_)) return;
     charging_ = !std::strcmp(udev_device_get_property_value(device.get(), "POWER_SUPPLY_STATUS"), "Charging");
