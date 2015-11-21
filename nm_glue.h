@@ -30,7 +30,7 @@ namespace NetworkManager {
 
 class AccessPointImpl : public AccessPoint_proxy, public DBus::ObjectProxy {
  private:
-  const nm::PropsCb& props_cb_;
+  const nm::PropsCb props_cb_;
 
  public:
   AccessPointImpl(DBus::Connection& conn, const std::string& path, const std::string& name, const nm::PropsCb& props_cb) :
@@ -52,7 +52,7 @@ namespace Connection {
 
 class ActiveImpl : public Active_proxy, public DBus::ObjectProxy {
  private:
-  const nm::PropsCb& props_cb_;
+  const nm::PropsCb props_cb_;
 
  public:
   ActiveImpl(DBus::Connection& conn, const std::string& path, const std::string& name, const nm::PropsCb& props_cb) :
@@ -73,7 +73,7 @@ namespace freedesktop {
 
 class NetworkManagerImpl : public NetworkManager_proxy, public DBus::ObjectProxy {
  private:
-  const nm::PropsCb& props_cb_;
+  const nm::PropsCb props_cb_;
 
  public:
   NetworkManagerImpl(DBus::Connection& conn, const std::string& path, const std::string& name, const nm::PropsCb& props_cb) :
