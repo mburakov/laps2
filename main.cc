@@ -108,17 +108,17 @@ void HandleXcbEvent(xcb_connection_t* conn, xcb_generic_event_t* evt, WidgetsBin
   }
 }
 
-void HandleWidgetEvent(xcb_connection_t* conn, int fd, WidgetsBinding& widgets) {
-  static const auto find_widget = [](auto& widgets, auto fd) {
+void HandleWidgetEvent(xcb_connection_t* conn, const pollfd& fd, WidgetsBinding& widgets) {
+  static const auto& find_widget = [](auto& widgets, const auto& fd) {
     return std::find_if(widgets.begin(), widgets.end(), [fd](const auto& op) {
-      const auto& fds = op.first->GetPollFd();
+      const auto& fds = op.first->GetPollFds();
       return std::find(fds.begin(), fds.end(), fd) != fds.end();
     });
   };
 
   auto it = find_widget(widgets, fd);
   if (it != widgets.end()) {
-    it->first->Handle();
+    it->first->Handle(fd);
     it->second.SetState(it->first->GetState());
     it->second.Update(conn);
   }
@@ -143,8 +143,8 @@ int main(int argc, char** argv) {
     for (;;) {
       std::vector<pollfd> fds = {{xcb_get_file_descriptor(conn.get()), POLLIN}};
       for (const auto& it : widgets) {
-        for (int fd : it.first->GetPollFd())
-          fds.push_back({fd, POLLIN});
+        const auto& widget_fds = it.first->GetPollFds();
+        fds.insert(fds.end(), widget_fds.begin(), widget_fds.end());
       }
       if (poll(fds.data(), fds.size(), -1) < 0)
         util::ThrowSystemError("Polling failed");
@@ -154,8 +154,8 @@ int main(int argc, char** argv) {
         HandleXcbEvent(conn.get(), evt.get(), widgets);
       }
       for (const auto& it : fds) {
-        if (it.revents & POLLIN)
-          HandleWidgetEvent(conn.get(), it.fd, widgets);
+        if (it.revents)
+          HandleWidgetEvent(conn.get(), it, widgets);
       }
       xcb_flush(conn.get());
     }

@@ -1,6 +1,5 @@
 #include "resources.h"
 #include "widget.h"
-#include <vector>
 #include <alsa/asoundlib.h>
 
 namespace {
@@ -20,7 +19,7 @@ void AlsaCheck(int result, const std::string& message) {
 
 struct : public Widget {
   // TODO(Micha): Replace with RaiiFd
-  std::list<int> pollfd_;
+  std::vector<pollfd> pollfds_;
   snd_mixer_t* mixer_;
   snd_mixer_elem_t* master_;
 
@@ -40,10 +39,8 @@ struct : public Widget {
     snd_mixer_selem_id_set_name(sid, kChan);
     master_ = snd_mixer_find_selem(mixer_, sid);
     if (!master_) throw std::runtime_error("Cannot find master volume control");
-    auto count = snd_mixer_poll_descriptors_count(mixer_);
-    std::vector<pollfd> pollfds(count);
-    AlsaCheck(snd_mixer_poll_descriptors(mixer_, pollfds.data(), pollfds.size()), "Cannot get poll descriptors");
-    for (const auto& it : pollfds) pollfd_.push_back(it.fd);
+    pollfds_.resize(snd_mixer_poll_descriptors_count(mixer_));
+    AlsaCheck(snd_mixer_poll_descriptors(mixer_, pollfds_.data(), pollfds_.size()), "Cannot get poll descriptors");
   }
 
   const uint8_t* GetState() override {
@@ -54,14 +51,14 @@ struct : public Widget {
     return kVolumeLevel[vol_images * cur / (max - min + 1)];
   }
 
-  std::list<int> GetPollFd() override {
-    return pollfd_;
+  std::vector<pollfd> GetPollFds() override {
+    return pollfds_;
   }
 
   void Activate() override {
   }
 
-  void Handle() override {
+  void Handle(const pollfd&) override {
     snd_mixer_handle_events(mixer_);
   }
 } __impl__;

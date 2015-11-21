@@ -64,14 +64,14 @@ struct : public Widget {
     return source[kNumStates * current_ / total_];
   }
 
-  std::list<int> GetPollFd() override {
-    return {fd_};
+  std::vector<pollfd> GetPollFds() override {
+    return {{fd_, POLLIN}};
   }
 
   void Activate() override {
   }
 
-  void Handle() override {
+  void Handle(const pollfd&) override {
     libudev::Device device(udev_monitor_receive_device(monitor_.get()), udev_device_unref);
     if (std::strcmp(udev_device_get_sysname(device.get()), device_name_)) return;
     charging_ = !std::strcmp(udev_device_get_property_value(device.get(), "POWER_SUPPLY_STATUS"), "Charging");

@@ -14,6 +14,12 @@ struct Singleton {
   }
 };
 
+struct NonCopyable {
+  NonCopyable() = default;
+  NonCopyable(const NonCopyable&) = delete;
+  NonCopyable& operator =(const NonCopyable&) = delete;
+};
+
 template<class T, int N>
 constexpr int Length(const T(&)[N]) {
   return N;
