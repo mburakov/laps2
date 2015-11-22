@@ -1,18 +1,8 @@
 #include "widget.h"
 #include "xcb.h"
 #include <algorithm>
-#include <iostream>
-#include <vector>
-#include <sys/poll.h>
 
 namespace {
-
-void PrintException(const std::exception& ex) {
-  int level = 0;
-  util::UnwindNested(ex, [&level](const auto& ex) {
-    std::cout << "!" << std::string(level++ * 2 + 1, ' ') << ex.what() << std::endl;
-  });
-}
 
 class WidgetView {
  private:
@@ -137,7 +127,7 @@ int main(int argc, char** argv) {
       view.SetState(it->GetState());
       widgets.emplace_back(it, std::move(view));
     } catch (const std::exception& ex) {
-      PrintException(ex);
+      util::PrintException(ex);
     }
     xcb_flush(conn.get());
     for (;;) {
@@ -161,7 +151,7 @@ int main(int argc, char** argv) {
     }
     return 0;
   } catch (const std::exception& ex) {
-    PrintException(ex);
+    util::PrintException(ex);
     return 1;
   }
 }

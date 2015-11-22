@@ -20,15 +20,39 @@ struct NonCopyable {
   NonCopyable& operator =(const NonCopyable&) = delete;
 };
 
+template<class T>
+class Holder : public NonCopyable {
+ protected:
+  using Base = Holder<T>;
+  using DtorPtr = void(*)(T*);
+  T* impl_;
+
+ private:
+  DtorPtr dtor_;
+
+ public:
+  Holder(T* op, DtorPtr dtor) :
+    impl_(op), dtor_(dtor) {}
+
+  Holder(Holder&& op) {
+    impl_ = op.impl_;
+    op.impl_ = nullptr;
+  }
+
+  ~Holder() {
+    if (impl_ && dtor_)
+      dtor_(impl_);
+  }
+};
+
 template<class T, int N>
 constexpr int Length(const T(&)[N]) {
   return N;
 }
 
-void UnwindNested(const std::exception& ex, const std::function<void(const std::exception&)>& handler);
-void ThrowSystemError(const std::string& what);
-
 std::string ReadFile(const std::string& path);
+void PrintException(const std::exception& ex);
+void ThrowSystemError(const std::string& what);
 
 }  // namespace util
 
